@@ -1,0 +1,513 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Veckans mat</title>
+<meta name="theme-color" content="#faf9f6">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#faf9f6; --card:#ffffff; --ink:#2a2f2c; --muted:#8b928e; --line:#efede8;
+    --accent:#4f9d7a; --accent-ink:#3d8466; --accent-soft:#eef6f1; --warn:#d0644e;
+    --radius:18px; --shadow:0 1px 2px rgba(40,50,45,.04), 0 4px 14px rgba(40,50,45,.05);
+    color-scheme: light;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 Inter,system-ui,-apple-system,"Segoe UI",sans-serif;padding-bottom:92px;-webkit-font-smoothing:antialiased}
+  header{position:sticky;top:0;z-index:5;background:rgba(250,249,246,.88);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);padding:18px 16px 12px}
+  h1{font-size:22px;font-weight:700;letter-spacing:-.02em;margin:0 0 12px;max-width:640px;margin-inline:auto}
+  .weeknav{display:flex;align-items:center;gap:8px;max-width:640px;margin:0 auto;background:var(--card);border-radius:14px;padding:6px;box-shadow:var(--shadow)}
+  .weeknav strong{flex:1;text-align:center;font-size:15px;font-weight:600}
+  .weeknav small{display:block;color:var(--muted);font-weight:400;font-size:12px}
+  .weeknav button{border:none;background:var(--accent-soft);color:var(--accent-ink);width:38px;height:38px;padding:0;font-size:20px;border-radius:10px}
+  button{font:inherit;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:12px;padding:9px 14px;cursor:pointer;font-weight:500;transition:background .15s, transform .1s}
+  button:active{transform:scale(.97)}
+  button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+  button.primary:hover{background:var(--accent-ink)}
+  button.ghost{border-color:transparent;background:transparent;color:var(--accent-ink);padding:6px 8px}
+  button.danger{color:var(--warn)}
+  button:disabled{opacity:.5}
+  main{max-width:640px;margin:0 auto;padding:8px 16px}
+  .card{background:var(--card);border:none;border-radius:var(--radius);padding:14px 16px;margin-bottom:10px;box-shadow:var(--shadow)}
+  .day{display:flex;gap:14px;align-items:center}
+  .day .dname{width:48px;flex:none;font-weight:600;font-size:14px;text-align:center;background:var(--bg);border-radius:12px;padding:6px 0}
+  .day .dname small{display:block;color:var(--muted);font-weight:400;font-size:11px}
+  .day .meal{flex:1;min-width:0}
+  .day .meal .title{font-weight:600}
+  .day .meal .sub{color:var(--muted);font-size:13px}
+  .day.today .dname{background:var(--accent);color:#fff}
+  .day.today .dname small{color:rgba(255,255,255,.85)}
+  .empty{color:var(--muted)}
+  .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .pill{display:inline-flex;align-items:center;gap:6px;background:var(--accent-soft);color:var(--accent-ink);border-radius:999px;padding:3px 4px;font-size:14px;font-weight:500}
+  .pill button{padding:0 10px;border:none;background:transparent;color:var(--accent-ink);font-weight:700;font-size:16px}
+  nav.tabs{position:fixed;bottom:0;left:0;right:0;display:flex;justify-content:center;gap:4px;background:rgba(255,255,255,.92);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-top:1px solid var(--line);padding:8px 8px calc(8px + env(safe-area-inset-bottom))}
+  nav.tabs button{flex:1;max-width:200px;border:none;background:transparent;color:var(--muted);font-size:13px;padding:10px 4px;border-radius:12px}
+  nav.tabs button.on{color:var(--accent-ink);background:var(--accent-soft);font-weight:600}
+  ul.shop{list-style:none;margin:0;padding:0}
+  ul.shop li{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}
+  ul.shop li:last-child{border-bottom:none}
+  ul.shop .amt{color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums}
+  ul.shop .from{display:block;color:var(--muted);font-size:12px}
+  input,textarea,select{font:inherit;width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:12px;background:var(--bg);color:var(--ink);outline:none;transition:border-color .15s, box-shadow .15s}
+  input:focus,textarea:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft);background:#fff}
+  textarea{min-height:120px;resize:vertical}
+  label{display:block;font-size:13px;font-weight:500;color:var(--muted);margin:12px 0 5px}
+  dialog{border:none;border-radius:22px;padding:0;width:min(560px,calc(100% - 24px));background:var(--card);color:var(--ink);box-shadow:0 20px 60px rgba(40,50,45,.18)}
+  dialog::backdrop{background:rgba(40,50,45,.25);backdrop-filter:blur(2px)}
+  .dlg{padding:20px}
+  .dlg h2{margin:0 0 6px;font-size:19px;font-weight:700;letter-spacing:-.01em}
+  .actions{display:flex;gap:8px;justify-content:flex-end;margin-top:18px;flex-wrap:wrap}
+  .search{margin-bottom:12px}
+  .search input{background:var(--card);box-shadow:var(--shadow);border-color:transparent}
+  .rlist .card{cursor:pointer;transition:transform .1s}
+  .rlist .card:active{transform:scale(.99)}
+  .rlist .card .sub{color:var(--muted);font-size:13px}
+  .hint{color:var(--muted);font-size:13px}
+  .banner{background:#fff7e6;color:#8a6414;border-radius:12px;padding:9px 14px;font-size:13px;max-width:608px;margin:0 auto}
+  h3{font-size:12px;font-weight:600;margin:18px 0 6px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+  ol.steps{padding-left:20px}
+  .rcard{display:flex;gap:12px;align-items:center}
+  .rcard img{width:56px;height:56px;object-fit:cover;border-radius:12px;flex:none}
+  .hero{width:100%;max-height:220px;object-fit:cover;border-radius:14px;margin:8px 0}
+  .note{background:var(--accent-soft);color:var(--accent-ink);border-radius:12px;padding:9px 13px;font-size:13px;margin:8px 0}
+  a{color:var(--accent-ink)}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🥗 Veckans mat</h1>
+  <div class="weeknav">
+    <button id="prevW" aria-label="Föregående vecka">‹</button>
+    <strong id="weekLabel"></strong>
+    <button id="nextW" aria-label="Nästa vecka">›</button>
+  </div>
+</header>
+<div id="modeBanner"></div>
+
+<main>
+  <section id="tab-plan"></section>
+  <section id="tab-shop" hidden></section>
+  <section id="tab-recipes" hidden></section>
+</main>
+
+<nav class="tabs">
+  <button data-tab="plan" class="on">📅 Plan</button>
+  <button data-tab="shop">🛒 Inköpslista</button>
+  <button data-tab="recipes">📖 Recept</button>
+</nav>
+
+<!-- Planera en dag -->
+<dialog id="dayDlg"><form method="dialog" class="dlg" id="dayForm">
+  <h2 id="dayDlgTitle"></h2>
+  <label for="dayRecipe">Recept från receptbanken</label>
+  <select id="dayRecipe"></select>
+  <label for="dayText">…eller skriv bara vad ni ska äta</label>
+  <input id="dayText" placeholder="t.ex. Rester, Pizza ute, Tacos">
+  <label for="dayPortions">Portioner</label>
+  <input id="dayPortions" type="number" min="1" max="30" inputmode="numeric">
+  <div class="actions">
+    <button type="button" class="danger" id="dayClear">Töm dagen</button>
+    <button value="cancel">Avbryt</button>
+    <button class="primary" id="daySave" value="save">Spara</button>
+  </div>
+</form></dialog>
+
+<!-- Recept -->
+<dialog id="recDlg"><form method="dialog" class="dlg" id="recForm">
+  <h2 id="recDlgTitle">Nytt recept</h2>
+  <label for="rName">Namn</label>
+  <input id="rName" required placeholder="Köttbullar med potatismos">
+  <label for="rPortions">Receptet räcker till (portioner)</label>
+  <input id="rPortions" type="number" min="1" value="4" inputmode="numeric">
+  <label for="rIngr">Ingredienser – en per rad</label>
+  <textarea id="rIngr" placeholder="500 g nötfärs&#10;1 st gul lök&#10;1 dl ströbröd&#10;2 dl mjölk&#10;salt"></textarea>
+  <div class="hint">Skriv mängd, enhet och vara, t.ex. "2 dl grädde". Utan mängd går också bra.</div>
+  <label for="rSteps">Gör så här (valfritt)</label>
+  <textarea id="rSteps" placeholder="1. Blanda färsen…"></textarea>
+  <label for="rLink">Länk till receptet (valfritt)</label>
+  <input id="rLink" type="url" placeholder="https://…">
+  <div class="actions">
+    <button type="button" class="danger" id="recDelete" hidden>Ta bort</button>
+    <button value="cancel">Avbryt</button>
+    <button class="primary" value="save">Spara</button>
+  </div>
+</form></dialog>
+
+<!-- Importera recept -->
+<dialog id="impDlg"><form method="dialog" class="dlg" id="impForm">
+  <h2>📥 Importera recept</h2>
+  <label for="impUrl">Länk från TikTok, Instagram eller en receptsida</label>
+  <input id="impUrl" type="url" placeholder="https://www.tiktok.com/@…/video/…">
+  <label for="impText">…eller klistra in recepttexten</label>
+  <textarea id="impText" placeholder="Klistra in bildtext, kommentar eller recept här" style="min-height:90px"></textarea>
+  <div class="hint">Står receptet i en kommentar under videon? Klistra in den texten här också, så blir resultatet bättre.</div>
+  <div id="impStatus" class="hint" style="margin-top:10px"></div>
+  <div class="actions">
+    <button value="cancel">Avbryt</button>
+    <button class="primary" id="impGo" value="go">Hämta recept</button>
+  </div>
+</form></dialog>
+
+<!-- Visa recept -->
+<dialog id="viewDlg"><div class="dlg" id="viewBody"></div></dialog>
+
+<script type="module">
+/* ============================================================
+   FIREBASE-INSTÄLLNINGAR
+   Klistra in din firebaseConfig här (Firebase-konsolen →
+   Projektinställningar → Dina appar). Lämnas den tom sparas
+   allt bara i den här webbläsaren (bra för att testa).
+   ============================================================ */
+const firebaseConfig = {
+  apiKey: "AIzaSyCS4-iP3HCoI3e8O9gsKbzEX-ckFr1Ov98",
+  authDomain: "veckans-mat-e089b.firebaseapp.com",
+  projectId: "veckans-mat-e089b",
+  storageBucket: "veckans-mat-e089b.firebasestorage.app",
+  messagingSenderId: "316478987612",
+  appId: "1:316478987612:web:eb34db3ca63a8d7a077599"
+};
+
+/* Adressen till receptimport-tjänsten på Cloudflare (worker.js),
+   t.ex. "https://veckans-mat.ditt-namn.workers.dev" */
+const IMPORT_URL = "https://veckans-mat.carl-lindgren00-ed6.workers.dev";
+
+/* ---------- Hjälpare ---------- */
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
+const DAYS = ["Måndag","Tisdag","Onsdag","Torsdag","Fredag","Lördag","Söndag"];
+const DEFAULT_PORTIONS = 4;
+
+function isoWeek(d){
+  const t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const day = t.getUTCDay() || 7;
+  t.setUTCDate(t.getUTCDate() + 4 - day);
+  const y0 = new Date(Date.UTC(t.getUTCFullYear(),0,1));
+  return { year: t.getUTCFullYear(), week: Math.ceil(((t - y0)/86400000 + 1)/7) };
+}
+function mondayOf(d){ const m = new Date(d); m.setHours(0,0,0,0); m.setDate(m.getDate() - ((m.getDay()+6)%7)); return m; }
+function weekId(monday){ const w = isoWeek(monday); return `${w.year}-W${String(w.week).padStart(2,"0")}`; }
+const fmtDate = d => `${d.getDate()}/${d.getMonth()+1}`;
+
+/* Tolka "2 1/2 dl grädde" → {amount, unit, name} */
+const UNITS = ["kg","hg","g","l","dl","cl","ml","msk","tsk","krm","st","pkt","paket","burk","burkar","förp","påse","påsar","knippe","klyfta","klyftor","skiva","skivor","nypa"];
+function parseLine(line){
+  const s = line.trim(); if(!s) return null;
+  const m = s.match(/^(\d+\s+\d+\/\d+|\d+\/\d+|\d+(?:[.,]\d+)?)?\s*(.*)$/);
+  let amount = null, rest = s;
+  if (m && m[1]){
+    amount = m[1].trim().split(/\s+/).reduce((sum, p) => {
+      if (p.includes("/")){ const [a,b] = p.split("/").map(Number); return sum + (b ? a/b : 0); }
+      return sum + parseFloat(p.replace(",", "."));
+    }, 0);
+    rest = m[2];
+  }
+  let unit = "";
+  const w = rest.split(/\s+/);
+  if (amount !== null && w.length > 1 && UNITS.includes(w[0].toLowerCase())){ unit = w.shift().toLowerCase(); }
+  return { amount, unit, name: w.join(" ").trim() || rest };
+}
+const lineOf = i => [i.amount != null ? fmtNum(i.amount) : "", i.unit, i.name].filter(Boolean).join(" ");
+function fmtNum(n){ const r = Math.round(n*100)/100; return String(r).replace(".", ","); }
+
+/* ---------- Lagring: Firebase eller lokalt ---------- */
+const state = { recipes: [], week: { days:{}, extras:[] }, monday: mondayOf(new Date()), tab:"plan" };
+let store;
+
+function localStore(){
+  const KEY = "veckansmat-v1";
+  let db; try { db = JSON.parse(localStorage.getItem(KEY)) || {}; } catch { db = {}; }
+  db.recipes ??= {}; db.weeks ??= {};
+  const save = () => { try { localStorage.setItem(KEY, JSON.stringify(db)); } catch {} };
+  let recCb = null, weekCb = null, curWeek = null;
+  const emitRec = () => recCb && recCb(Object.values(db.recipes));
+  const emitWeek = () => weekCb && weekCb(db.weeks[curWeek] || { days:{}, extras:[] });
+  return {
+    local: true,
+    onRecipes(cb){ recCb = cb; emitRec(); },
+    onWeek(id, cb){ curWeek = id; weekCb = cb; emitWeek(); return () => {}; },
+    async saveRecipe(r){ db.recipes[r.id] = r; save(); emitRec(); },
+    async deleteRecipe(id){ delete db.recipes[id]; save(); emitRec(); },
+    async saveWeek(id, w){ db.weeks[id] = w; save(); if (id === curWeek) emitWeek(); },
+  };
+}
+
+async function firebaseStore(){
+  const V = "10.12.2";
+  const { initializeApp } = await import(`https://www.gstatic.com/firebasejs/${V}/firebase-app.js`);
+  const fs = await import(`https://www.gstatic.com/firebasejs/${V}/firebase-firestore.js`);
+  const db = fs.getFirestore(initializeApp(firebaseConfig));
+  return {
+    local: false,
+    onRecipes(cb){ fs.onSnapshot(fs.collection(db, "recipes"), snap => cb(snap.docs.map(d => d.data()))); },
+    onWeek(id, cb){ return fs.onSnapshot(fs.doc(db, "weeks", id), snap => cb(snap.exists() ? snap.data() : { days:{}, extras:[] })); },
+    saveRecipe: r => fs.setDoc(fs.doc(db, "recipes", r.id), r),
+    deleteRecipe: id => fs.deleteDoc(fs.doc(db, "recipes", id)),
+    saveWeek: (id, w) => fs.setDoc(fs.doc(db, "weeks", id), w),
+  };
+}
+
+/* ---------- Rendering ---------- */
+const recipeById = id => state.recipes.find(r => r.id === id);
+
+function renderHeader(){
+  const w = isoWeek(state.monday);
+  const sun = new Date(state.monday); sun.setDate(sun.getDate()+6);
+  $("#weekLabel").innerHTML = `Vecka ${w.week}<small>${fmtDate(state.monday)} – ${fmtDate(sun)}</small>`;
+}
+
+function renderPlan(){
+  const today = new Date(); today.setHours(0,0,0,0);
+  let html = "";
+  DAYS.forEach((name, i) => {
+    const d = new Date(state.monday); d.setDate(d.getDate()+i);
+    const e = state.week.days?.[i];
+    const r = e?.recipeId ? recipeById(e.recipeId) : null;
+    const title = r ? r.name : (e?.text || "");
+    html += `<div class="card day ${+d === +today ? "today":""}">
+      <div class="dname">${name.slice(0,3)}<small>${fmtDate(d)}</small></div>
+      <div class="meal">${title
+        ? `<div class="title">${esc(title)}</div>
+           <div class="sub">${r ? `${e.portions || r.portions} portioner · <button class="ghost" data-view="${r.id}" data-p="${e.portions || r.portions}">Visa recept</button>` : (e.portions ? `${e.portions} portioner` : "")}</div>`
+        : `<div class="empty">Inget planerat</div>`}</div>
+      <button class="ghost" data-day="${i}">${title ? "Ändra" : "+ Lägg till"}</button>
+    </div>`;
+  });
+  $("#tab-plan").innerHTML = html;
+}
+
+function buildShoppingList(){
+  const map = new Map();
+  Object.values(state.week.days || {}).forEach(e => {
+    const r = e?.recipeId && recipeById(e.recipeId); if(!r) return;
+    const f = (e.portions || r.portions) / (r.portions || 1);
+    r.ingredients.forEach(i => {
+      const key = i.name.toLowerCase() + "|" + i.unit;
+      const cur = map.get(key) || { name: i.name, unit: i.unit, amount: null, from: new Set() };
+      if (i.amount != null) cur.amount = (cur.amount || 0) + i.amount * f;
+      cur.from.add(r.name);
+      map.set(key, cur);
+    });
+  });
+  return [...map.values()].sort((a,b) => a.name.localeCompare(b.name, "sv"));
+}
+
+function renderShop(){
+  const items = buildShoppingList();
+  const extras = state.week.extras || [];
+  let html = `<div class="card"><h3 style="margin-top:0">Från veckans recept</h3>`;
+  html += items.length ? `<ul class="shop">${items.map(i => `<li>
+      <span>${esc(i.name)}<span class="from">${esc([...i.from].join(", "))}</span></span>
+      <span class="amt">${i.amount != null ? fmtNum(i.amount) : ""} ${esc(i.unit)}</span></li>`).join("")}</ul>`
+    : `<div class="empty">Planera dagar med recept så fylls listan i automatiskt.</div>`;
+  html += `</div><div class="card"><h3 style="margin-top:0">Övrigt att handla</h3>
+    <ul class="shop">${extras.map((x,i) => `<li><span>${esc(x)}</span><button class="ghost danger" data-delx="${i}" aria-label="Ta bort">✕</button></li>`).join("")}</ul>
+    <form id="extraForm" class="row" style="margin-top:8px"><input id="extraIn" placeholder="t.ex. Kaffe, blöjor, mjölk" style="flex:1"><button class="primary">Lägg till</button></form>
+  </div>
+  <div class="row"><button id="copyList">📋 Kopiera listan</button></div>`;
+  $("#tab-shop").innerHTML = html;
+}
+
+function renderRecipes(){
+  const q = ($("#rSearch")?.value || "").toLowerCase();
+  const list = state.recipes.filter(r => r.name.toLowerCase().includes(q)).sort((a,b) => a.name.localeCompare(b.name,"sv"));
+  const searchVal = $("#rSearch")?.value || "";
+  $("#tab-recipes").innerHTML = `
+    <div class="row search"><input id="rSearch" placeholder="Sök recept…" value="${esc(searchVal)}" style="flex:1"><button id="newRec">+ Nytt</button><button class="primary" id="impRec">📥 Importera</button></div>
+    <div class="rlist">${list.length ? list.map(r => `<div class="card rcard" data-view="${r.id}" data-p="${r.portions}">
+      ${r.image ? `<img src="${esc(r.image)}" alt="" loading="lazy" onerror="this.remove()">` : ""}
+      <div><div class="title"><strong>${esc(r.name)}</strong></div>
+      <div class="sub">${r.portions} portioner · ${r.ingredients.length} ingredienser${r.source ? ` · ${sourceLabel(r.source)}` : ""}</div></div></div>`).join("")
+      : `<div class="empty">${state.recipes.length ? "Inga träffar." : "Inga recept än – lägg till era favoriter!"}</div>`}</div>`;
+  if (searchVal){ const el = $("#rSearch"); el.focus(); el.setSelectionRange(searchVal.length, searchVal.length); }
+}
+
+function render(){ renderHeader(); renderPlan(); renderShop(); if (state.tab === "recipes") renderRecipes(); }
+
+/* ---------- Visa recept med skalade mängder ---------- */
+function openView(id, portions){
+  const r = recipeById(id); if(!r) return;
+  let p = Number(portions) || r.portions;
+  const draw = () => {
+    const f = p / r.portions;
+    $("#viewBody").innerHTML = `<h2>${esc(r.name)}</h2>
+      ${r.image ? `<img class="hero" src="${esc(r.image)}" alt="" onerror="this.remove()">` : ""}
+      ${r.estimated ? `<div class="note">Videon visade inte exakta mängder, så receptet är uppskattat. Justera gärna.</div>` : ""}
+      <div class="row" style="margin:8px 0"><span class="pill"><button data-pp="-1">−</button>${p} portioner<button data-pp="1">+</button></span></div>
+      <h3>Ingredienser</h3><ul class="shop">${r.ingredients.map(i => `<li><span>${esc(i.name)}</span><span class="amt">${i.amount != null ? fmtNum(i.amount*f) : ""} ${esc(i.unit)}</span></li>`).join("")}</ul>
+      ${r.steps ? `<h3>Gör så här</h3><div style="white-space:pre-wrap">${esc(r.steps)}</div>` : ""}
+      ${(r.source || r.link) ? `<p><a href="${esc(r.source || r.link)}" target="_blank" rel="noopener">Öppna originalet${r.source ? " på " + sourceLabel(r.source) : ""} ↗</a></p>` : ""}
+      <div class="actions"><button id="editRec">Redigera</button><button class="primary" id="closeView">Stäng</button></div>`;
+  };
+  draw();
+  $("#viewBody").onclick = e => {
+    const pp = e.target.dataset.pp;
+    if (pp){ p = Math.max(1, p + Number(pp)); draw(); }
+    if (e.target.id === "closeView") $("#viewDlg").close();
+    if (e.target.id === "editRec"){ $("#viewDlg").close(); openRecipe(id); }
+  };
+  $("#viewDlg").showModal();
+}
+
+/* ---------- Dag-dialog ---------- */
+let editDay = null;
+function openDay(i){
+  editDay = i;
+  const e = state.week.days?.[i] || {};
+  $("#dayDlgTitle").textContent = DAYS[i];
+  $("#dayRecipe").innerHTML = `<option value="">— Inget recept —</option>` +
+    [...state.recipes].sort((a,b)=>a.name.localeCompare(b.name,"sv")).map(r => `<option value="${r.id}" ${r.id===e.recipeId?"selected":""}>${esc(r.name)}</option>`).join("");
+  $("#dayText").value = e.text || "";
+  $("#dayPortions").value = e.portions || recipeById(e.recipeId)?.portions || DEFAULT_PORTIONS;
+  $("#dayDlg").showModal();
+}
+$("#dayRecipe").onchange = () => { const r = recipeById($("#dayRecipe").value); if (r){ $("#dayText").value = ""; } };
+$("#dayForm").onsubmit = e => {
+  if (e.submitter?.value !== "save") return;
+  const recipeId = $("#dayRecipe").value || null;
+  const text = $("#dayText").value.trim();
+  const days = { ...(state.week.days || {}) };
+  if (!recipeId && !text) delete days[editDay];
+  else days[editDay] = { recipeId, text: recipeId ? "" : text, portions: Number($("#dayPortions").value) || DEFAULT_PORTIONS };
+  saveWeek({ ...state.week, days });
+};
+$("#dayClear").onclick = () => {
+  const days = { ...(state.week.days || {}) }; delete days[editDay];
+  saveWeek({ ...state.week, days }); $("#dayDlg").close();
+};
+
+/* ---------- Recept-dialog ---------- */
+let editRecId = null, recExtra = {};
+function openRecipe(id, prefill){
+  editRecId = id || null;
+  const r = prefill || (id ? recipeById(id) : null);
+  recExtra = { image: r?.image || "", source: r?.source || "", estimated: !!r?.estimated };
+  $("#recDlgTitle").textContent = prefill ? "Kontrollera och spara" : r ? "Redigera recept" : "Nytt recept";
+  $("#rName").value = r?.name || "";
+  $("#rPortions").value = r?.portions || DEFAULT_PORTIONS;
+  $("#rIngr").value = r ? r.ingredients.map(lineOf).join("\n") : "";
+  $("#rSteps").value = r?.steps || "";
+  $("#rLink").value = r?.link || "";
+  $("#recDelete").hidden = !editRecId;
+  $("#recDlg").showModal();
+}
+$("#recForm").onsubmit = async e => {
+  if (e.submitter?.value !== "save") return;
+  const r = {
+    id: editRecId || uid(),
+    name: $("#rName").value.trim(),
+    portions: Number($("#rPortions").value) || DEFAULT_PORTIONS,
+    ingredients: $("#rIngr").value.split("\n").map(parseLine).filter(Boolean),
+    steps: $("#rSteps").value.trim(),
+    link: $("#rLink").value.trim(),
+    ...recExtra,
+  };
+  if (!r.name){ e.preventDefault(); return; }
+  await store.saveRecipe(r);
+};
+$("#recDelete").onclick = async () => {
+  if (!confirm("Ta bort receptet?")) return;
+  await store.deleteRecipe(editRecId); $("#recDlg").close();
+};
+
+/* ---------- Importera från TikTok / webb ---------- */
+function sourceLabel(u){
+  try { const h = new URL(u).hostname.replace(/^www\.|^m\./, "");
+    return h.includes("tiktok") ? "TikTok" : h.includes("instagram") ? "Instagram" : h.includes("youtube") || h.includes("youtu.be") ? "YouTube" : h;
+  } catch { return "länk"; }
+}
+function openImport(url = "", text = ""){
+  $("#impUrl").value = url; $("#impText").value = text; $("#impStatus").textContent = "";
+  $("#impGo").disabled = false;
+  if (!$("#impDlg").open) $("#impDlg").showModal();
+  if (url || text) runImport();
+}
+async function runImport(){
+  const url = $("#impUrl").value.trim(), text = $("#impText").value.trim();
+  if (!url && !text){ $("#impStatus").textContent = "Klistra in en länk eller text först."; return; }
+  if (!IMPORT_URL){ $("#impStatus").textContent = "Receptimporten är inte inställd än (IMPORT_URL saknas)."; return; }
+  $("#impGo").disabled = true;
+  $("#impStatus").textContent = "⏳ Läser receptet… det tar några sekunder.";
+  try {
+    const res = await fetch(IMPORT_URL, { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify({ url, text }) });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.recipe) throw new Error(data.error || `Fel ${res.status}`);
+    $("#impDlg").close();
+    openRecipe(null, data.recipe);
+  } catch (err) {
+    $("#impStatus").textContent = "❌ " + err.message;
+    $("#impGo").disabled = false;
+  }
+}
+$("#impForm").onsubmit = e => { if (e.submitter?.value === "go"){ e.preventDefault(); runImport(); } };
+
+/* ---------- Vecka ---------- */
+let unsubWeek = () => {};
+function loadWeek(){
+  unsubWeek();
+  const id = weekId(state.monday);
+  unsubWeek = store.onWeek(id, w => { state.week = { days: w.days || {}, extras: w.extras || [] }; render(); }) || (() => {});
+  render();
+}
+function saveWeek(w){ state.week = w; render(); store.saveWeek(weekId(state.monday), w); }
+$("#prevW").onclick = () => { state.monday.setDate(state.monday.getDate()-7); loadWeek(); };
+$("#nextW").onclick = () => { state.monday.setDate(state.monday.getDate()+7); loadWeek(); };
+
+/* ---------- Klick ---------- */
+document.addEventListener("click", e => {
+  const t = e.target.closest("[data-day],[data-view],[data-tab],[data-delx],#newRec,#impRec,#copyList");
+  if (!t) return;
+  if (t.dataset.day) openDay(Number(t.dataset.day));
+  else if (t.dataset.view) openView(t.dataset.view, t.dataset.p);
+  else if (t.dataset.tab){
+    state.tab = t.dataset.tab;
+    document.querySelectorAll("nav.tabs button").forEach(b => b.classList.toggle("on", b === t));
+    ["plan","shop","recipes"].forEach(x => $("#tab-"+x).hidden = x !== state.tab);
+    if (state.tab === "recipes") renderRecipes();
+  }
+  else if (t.dataset.delx){ const extras = [...state.week.extras]; extras.splice(Number(t.dataset.delx),1); saveWeek({ ...state.week, extras }); }
+  else if (t.id === "newRec") openRecipe();
+  else if (t.id === "impRec") openImport();
+  else if (t.id === "copyList"){
+    const lines = buildShoppingList().map(i => `${i.amount != null ? fmtNum(i.amount)+" " : ""}${i.unit ? i.unit+" " : ""}${i.name}`);
+    const text = `Inköpslista vecka ${isoWeek(state.monday).week}\n` + [...lines, ...state.week.extras].map(l => "• "+l).join("\n");
+    navigator.clipboard?.writeText(text).then(() => { t.textContent = "✅ Kopierad!"; setTimeout(() => t.textContent = "📋 Kopiera listan", 1500); });
+  }
+});
+document.addEventListener("submit", e => {
+  if (e.target.id !== "extraForm") return;
+  e.preventDefault();
+  const v = $("#extraIn").value.trim(); if (!v) return;
+  saveWeek({ ...state.week, extras: [...(state.week.extras || []), v] });
+});
+document.addEventListener("input", e => { if (e.target.id === "rSearch") renderRecipes(); });
+
+/* ---------- Start ---------- */
+(async () => {
+  const hasConfig = !!firebaseConfig.projectId;
+  try { store = hasConfig ? await firebaseStore() : localStore(); }
+  catch (err) { console.error(err); store = localStore(); }
+  if (store.local){
+    $("#modeBanner").innerHTML = `<div style="padding:0 16px"><div class="banner" style="margin-top:4px">Ingen kontakt med databasen – ändringar sparas bara i den här webbläsaren.</div></div>`;
+  }
+  store.onRecipes(list => { state.recipes = list; render(); if (state.tab === "recipes") renderRecipes(); });
+  loadWeek();
+
+  // Delat från iPhone-genvägen: ?import=<länk eller text>
+  const shared = new URLSearchParams(location.search).get("import");
+  if (shared){
+    history.replaceState(null, "", location.pathname);
+    const link = (shared.match(/https?:\/\/\S+/) || [])[0] || "";
+    const rest = shared.replace(link, "").trim();
+    state.tab = "recipes";
+    document.querySelector('nav.tabs [data-tab="recipes"]').click();
+    openImport(link, link ? (rest.length > 40 ? rest : "") : shared);
+  }
+})();
+</script>
+</body>
+</html>
