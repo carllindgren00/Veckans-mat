@@ -74,6 +74,7 @@
   .hero{width:100%;max-height:220px;object-fit:cover;border-radius:14px;margin:8px 0}
   .note{background:var(--accent-soft);color:var(--accent-ink);border-radius:12px;padding:9px 13px;font-size:13px;margin:8px 0}
   a{color:var(--accent-ink)}
+  .banner.err{background:#fdecea;color:#a3321f;margin-top:8px;word-break:break-word}
 </style>
 </head>
 <body>
@@ -87,6 +88,7 @@
   </div>
 </header>
 <div id="modeBanner"></div>
+<div id="errBox"></div>
 
 <main>
   <section id="tab-plan"></section>
@@ -241,15 +243,26 @@ async function firebaseStore(){
   const { initializeApp } = await import(`https://www.gstatic.com/firebasejs/${V}/firebase-app.js`);
   const fs = await import(`https://www.gstatic.com/firebasejs/${V}/firebase-firestore.js`);
   const db = fs.getFirestore(initializeApp(firebaseConfig));
+  const fail = what => err => showError(`${what}: ${err.code || ""} ${err.message || err}`);
+  const guard = (p, what) => p.then(() => clearError()).catch(err => { fail(what)(err); throw err; });
   return {
     local: false,
-    onRecipes(cb){ fs.onSnapshot(fs.collection(db, "recipes"), snap => cb(snap.docs.map(d => d.data()))); },
-    onWeek(id, cb){ return fs.onSnapshot(fs.doc(db, "weeks", id), snap => cb(snap.exists() ? snap.data() : { days:{}, extras:[] })); },
-    saveRecipe: r => fs.setDoc(fs.doc(db, "recipes", r.id), r),
-    deleteRecipe: id => fs.deleteDoc(fs.doc(db, "recipes", id)),
-    saveWeek: (id, w) => fs.setDoc(fs.doc(db, "weeks", id), w),
+    onRecipes(cb){ fs.onSnapshot(fs.collection(db, "recipes"), snap => cb(snap.docs.map(d => d.data())), fail("Kunde inte läsa recepten")); },
+    onWeek(id, cb){ return fs.onSnapshot(fs.doc(db, "weeks", id), snap => cb(snap.exists() ? snap.data() : { days:{}, extras:[] }), fail("Kunde inte läsa veckan")); },
+    saveRecipe: r => guard(fs.setDoc(fs.doc(db, "recipes", r.id), r), "Kunde inte spara receptet"),
+    deleteRecipe: id => guard(fs.deleteDoc(fs.doc(db, "recipes", id)), "Kunde inte ta bort receptet"),
+    saveWeek: (id, w) => guard(fs.setDoc(fs.doc(db, "weeks", id), w), "Kunde inte spara veckan"),
   };
 }
+
+/* ---------- Felmeddelanden ---------- */
+function showError(msg){
+  console.error(msg);
+  $("#errBox").innerHTML = `<div style="padding:0 16px"><div class="banner err">⚠️ ${esc(msg)}</div></div>`;
+}
+function clearError(){ $("#errBox").innerHTML = ""; }
+window.addEventListener("error", e => showError("Fel i appen: " + (e.message || e.error)));
+window.addEventListener("unhandledrejection", e => { if (!String(e.reason?.code || "").length) showError("Fel: " + (e.reason?.message || e.reason)); });
 
 /* ---------- Rendering ---------- */
 const recipeById = id => state.recipes.find(r => r.id === id);
@@ -490,7 +503,7 @@ document.addEventListener("input", e => { if (e.target.id === "rSearch") renderR
 (async () => {
   const hasConfig = !!firebaseConfig.projectId;
   try { store = hasConfig ? await firebaseStore() : localStore(); }
-  catch (err) { console.error(err); store = localStore(); }
+  catch (err) { showError("Kunde inte ladda Firebase: " + (err.message || err)); store = localStore(); }
   if (store.local){
     $("#modeBanner").innerHTML = `<div style="padding:0 16px"><div class="banner" style="margin-top:4px">Ingen kontakt med databasen – ändringar sparas bara i den här webbläsaren.</div></div>`;
   }
