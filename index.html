@@ -5,6 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Veckans mat</title>
 <meta name="theme-color" content="#faf9f6">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-title" content="Veckans mat">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -261,7 +266,11 @@ function showError(msg){
   $("#errBox").innerHTML = `<div style="padding:0 16px"><div class="banner err">⚠️ ${esc(msg)}</div></div>`;
 }
 function clearError(){ $("#errBox").innerHTML = ""; }
-window.addEventListener("error", e => showError("Fel i appen: " + (e.message || e.error)));
+window.addEventListener("error", e => {
+  // "Script error." kommer från webbläsarens egna skript utan detaljer – ignorera
+  if (!e.filename || !e.filename.startsWith(location.origin) || /^Script error\.?$/.test(e.message || "")) return;
+  showError("Fel i appen: " + (e.message || e.error));
+});
 window.addEventListener("unhandledrejection", e => { if (!String(e.reason?.code || "").length) showError("Fel: " + (e.reason?.message || e.reason)); });
 
 /* ---------- Rendering ---------- */
