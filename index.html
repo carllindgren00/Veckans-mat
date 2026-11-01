@@ -99,6 +99,22 @@
   .day .meal .sub button.ghost{padding:0 2px;font-size:13px}
   .day > button.ghost{white-space:nowrap}
   .withic{display:flex;align-items:center;gap:8px}
+  h3 .count{float:right;font-weight:500;letter-spacing:0;color:var(--accent-ink)}
+  ul.checks,ol.steps2{list-style:none;margin:0;padding:0}
+  ul.checks li{display:flex;align-items:center;gap:12px;padding:11px 2px;border-bottom:1px solid var(--line);cursor:pointer;-webkit-tap-highlight-color:transparent}
+  ul.checks li:last-child{border-bottom:none}
+  ul.checks .box{width:22px;height:22px;border-radius:50%;border:1.8px solid #cfd8d3;display:flex;align-items:center;justify-content:center;flex:none;color:transparent;transition:all .15s}
+  ul.checks .txt{flex:1}
+  ul.checks .amt{color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums}
+  ul.checks li.done .box{background:var(--accent);border-color:var(--accent);color:#fff}
+  ul.checks li.done .txt,ul.checks li.done .amt{color:#b6bdb9;text-decoration:line-through}
+  ol.steps2 li{display:flex;gap:12px;align-items:flex-start;padding:12px;margin:0 -12px 2px;border-radius:14px;cursor:pointer;transition:background .15s;-webkit-tap-highlight-color:transparent}
+  ol.steps2 .num{width:26px;height:26px;border-radius:50%;background:var(--bg);color:var(--ink);font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center;flex:none;margin-top:-1px}
+  ol.steps2 .txt{flex:1;line-height:1.5}
+  ol.steps2 li.next{background:var(--accent-soft)}
+  ol.steps2 li.next .num{background:var(--accent);color:#fff}
+  ol.steps2 li.done .num{background:var(--accent-soft);color:var(--accent-ink)}
+  ol.steps2 li.done .txt{color:#b6bdb9;text-decoration:line-through}
   .day{display:grid;grid-template-columns:48px 1fr auto;column-gap:14px;row-gap:10px;align-items:center}
   .school{grid-column:1 / -1;display:flex;gap:8px;align-items:flex-start;padding:8px 12px;background:#fbf6e9;color:#7a6a3f;border-radius:10px;font-size:12.5px;line-height:1.4}
   .school .ic{margin-top:1px;color:#c9a24b}
@@ -450,28 +466,71 @@ function renderRecipes(){
 function render(){ renderHeader(); renderPlan(); renderShop(); if (state.tab === "recipes") renderRecipes(); }
 
 /* ---------- Visa recept med skalade mängder ---------- */
+/* Avbockningar sparas bara i den här telefonen, per recept */
+const CK_KEY = "veckansmat-bockat";
+function loadChecks(id){ try { return JSON.parse(localStorage.getItem(CK_KEY) || "{}")[id] || { i: [], s: [] }; } catch { return { i: [], s: [] }; } }
+function saveChecks(id, c){
+  try {
+    const all = JSON.parse(localStorage.getItem(CK_KEY) || "{}");
+    if (!c.i.length && !c.s.length) delete all[id]; else all[id] = { ...c, t: Date.now() };
+    localStorage.setItem(CK_KEY, JSON.stringify(all));
+  } catch {}
+}
+const splitSteps = s => String(s || "").split(/\n+/).map(x => x.replace(/^\s*\d+[.)]\s*/, "").trim()).filter(Boolean);
+
+/* Håll skärmen tänd medan receptet är öppet */
+let wakeLock = null;
+async function keepAwake(on){
+  try {
+    if (on && "wakeLock" in navigator && !wakeLock) wakeLock = await navigator.wakeLock.request("screen");
+    if (!on && wakeLock){ await wakeLock.release(); wakeLock = null; }
+  } catch {}
+}
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && $("#viewDlg").open){ wakeLock = null; keepAwake(true); } });
+$("#viewDlg").addEventListener("close", () => keepAwake(false));
+
 function openView(id, portions){
   const r = recipeById(id); if(!r) return;
   let p = Number(portions) || r.portions;
+  const steps = splitSteps(r.steps);
+  let ck = loadChecks(id);
+  // Gamla avbockningar (äldre än 12 timmar) nollställs automatiskt
+  if (ck.t && Date.now() - ck.t > 12*3600*1000) ck = { i: [], s: [] };
   const draw = () => {
     const f = p / r.portions;
+    const doneS = steps.filter((_, n) => ck.s.includes(n)).length;
+    const nextS = steps.findIndex((_, n) => !ck.s.includes(n));
+    const any = ck.i.length || ck.s.length;
     $("#viewBody").innerHTML = `<h2>${esc(r.name)}</h2>
       ${r.image ? `<img class="hero" src="${esc(r.image)}" alt="" onerror="this.remove()">` : ""}
       ${r.estimated ? `<div class="note">Videon visade inte exakta mängder, så receptet är uppskattat. Justera gärna.</div>` : ""}
-      <div class="row" style="margin:8px 0"><span class="pill"><button data-pp="-1">−</button>${p} portioner<button data-pp="1">+</button></span></div>
-      <h3>Ingredienser</h3><ul class="shop">${r.ingredients.map(i => `<li><span>${esc(i.name)}</span><span class="amt">${i.amount != null ? fmtNum(i.amount*f) : ""} ${esc(i.unit)}</span></li>`).join("")}</ul>
-      ${r.steps ? `<h3>Gör så här</h3><div style="white-space:pre-wrap">${esc(r.steps)}</div>` : ""}
+      <div class="row" style="margin:8px 0;justify-content:space-between"><span class="pill"><button data-pp="-1">−</button>${p} portioner<button data-pp="1">+</button></span>
+        ${any ? `<button class="ghost" data-reset="1">${ic("x","ic sm")}Nollställ</button>` : ""}</div>
+      <h3>Ingredienser <span class="count">${ck.i.length}/${r.ingredients.length}</span></h3>
+      <ul class="checks">${r.ingredients.map((i, n) => `<li class="${ck.i.includes(n) ? "done" : ""}" data-ci="${n}">
+        <span class="box">${ic("check","ic sm")}</span><span class="txt">${esc(i.name)}</span>
+        <span class="amt">${i.amount != null ? fmtNum(i.amount*f) : ""} ${esc(i.unit)}</span></li>`).join("")}</ul>
+      ${steps.length ? `<h3>Gör så här <span class="count">${doneS}/${steps.length}</span></h3>
+      <ol class="steps2">${steps.map((s, n) => `<li class="${ck.s.includes(n) ? "done" : ""}${n === nextS ? " next" : ""}" data-cs="${n}">
+        <span class="num">${ck.s.includes(n) ? ic("check","ic sm") : n + 1}</span><span class="txt">${esc(s)}</span></li>`).join("")}</ol>
+      ${steps.length && doneS === steps.length ? `<div class="note withic" style="justify-content:center">${ic("check")}Klart! Smaklig måltid</div>` : ""}` : ""}
       ${(r.source || r.link) ? `<p><a href="${esc(r.source || r.link)}" target="_blank" rel="noopener">Öppna originalet${r.source ? " på " + sourceLabel(r.source) : ""} ${ic("external","ic sm")}</a></p>` : ""}
       <div class="actions"><button id="editRec">Redigera</button><button class="primary" id="closeView">Stäng</button></div>`;
   };
   draw();
+  const toggle = (arr, n) => { const k = arr.indexOf(n); k >= 0 ? arr.splice(k, 1) : arr.push(n); };
   $("#viewBody").onclick = e => {
-    const pp = e.target.dataset.pp;
-    if (pp){ p = Math.max(1, p + Number(pp)); draw(); }
-    if (e.target.id === "closeView") $("#viewDlg").close();
-    if (e.target.id === "editRec"){ $("#viewDlg").close(); openRecipe(id); }
+    const t = e.target.closest("[data-pp],[data-ci],[data-cs],[data-reset],#closeView,#editRec");
+    if (!t) return;
+    if (t.dataset.pp){ p = Math.max(1, p + Number(t.dataset.pp)); draw(); return; }
+    if (t.dataset.ci !== undefined){ toggle(ck.i, Number(t.dataset.ci)); saveChecks(id, ck); draw(); return; }
+    if (t.dataset.cs !== undefined){ toggle(ck.s, Number(t.dataset.cs)); saveChecks(id, ck); draw(); return; }
+    if (t.dataset.reset){ ck = { i: [], s: [] }; saveChecks(id, ck); draw(); return; }
+    if (t.id === "closeView") $("#viewDlg").close();
+    if (t.id === "editRec"){ $("#viewDlg").close(); openRecipe(id); }
   };
   $("#viewDlg").showModal();
+  keepAwake(true);
 }
 
 /* ---------- Dag-dialog ---------- */
