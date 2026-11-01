@@ -99,6 +99,10 @@
   .day .meal .sub button.ghost{padding:0 2px;font-size:13px}
   .day > button.ghost{white-space:nowrap}
   .withic{display:flex;align-items:center;gap:8px}
+  .day{display:grid;grid-template-columns:48px 1fr auto;column-gap:14px;row-gap:10px;align-items:center}
+  .school{grid-column:1 / -1;display:flex;gap:8px;align-items:flex-start;padding:8px 12px;background:#fbf6e9;color:#7a6a3f;border-radius:10px;font-size:12.5px;line-height:1.4}
+  .school .ic{margin-top:1px;color:#c9a24b}
+  .school .slabel{display:inline;margin-right:6px;font-size:10.5px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:#b39350}
   .withic .ic{width:22px;height:22px;color:var(--accent)}
   .photoBtn .ic{width:21px;height:21px}
   ul.shop button.ghost{padding:6px}
@@ -219,6 +223,9 @@ const firebaseConfig = {
    t.ex. "https://veckans-mat.ditt-namn.workers.dev" */
 const IMPORT_URL = "https://veckans-mat.carl-lindgren00-ed6.workers.dev";
 
+/* Skolmat från Skolmaten.se – namnet är det som står i adressen skolmaten.se/<namn> */
+const SKOLMAT = { school: "valthornet-forskola", label: "Valthornet" };
+
 /* ---------- Hjälpare ---------- */
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -313,6 +320,7 @@ const ICONS = {
   pencil:'<path d="M15.5 4.5l4 4L8.5 19.5 4 20l.5-4.5z"/><path d="M13.5 6.5l4 4"/>',
   chevL:'<path d="M14.5 6 8.5 12l6 6"/>',
   chevR:'<path d="M9.5 6l6 6-6 6"/>',
+  backpack:'<path d="M6 10a6 6 0 0 1 12 0v9a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2z"/><path d="M9 4.6V4a3 3 0 0 1 6 0v.6"/><path d="M9 21v-5h6v5"/>',
   external:'<path d="M14 4h6v6M20 4l-9 9"/><path d="M18 14v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4"/>',
 };
 const ic = (n, cls = "ic") => `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[n] || ""}</svg>`;
@@ -345,6 +353,33 @@ function renderHeader(){
   $("#weekLabel").innerHTML = `Vecka ${w.week}<small>${fmtDate(state.monday)} – ${fmtDate(sun)}</small>`;
 }
 
+/* ---------- Skolmat ---------- */
+const isoDate = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+state.school = {};
+function schoolChip(d){
+  const day = state.school[isoDate(d)];
+  if (!day || (!day.meals.length && !day.note)) return "";
+  const text = day.meals.length ? day.meals.join(" · ") : day.note;
+  return `<div class="school">${ic("backpack","ic sm")}<div><span class="slabel">${esc(SKOLMAT.label)}</span>${esc(text)}</div></div>`;
+}
+const schoolLoaded = new Set();
+async function loadSchool(monday){
+  if (!SKOLMAT.school || !IMPORT_URL) return;
+  const w = isoWeek(monday), key = `${w.year}-${w.week}`;
+  if (schoolLoaded.has(key)) return;
+  schoolLoaded.add(key);
+  try {
+    const res = await fetch(`${IMPORT_URL}/skolmat?school=${encodeURIComponent(SKOLMAT.school)}&year=${w.year}&week=${w.week}`);
+    if (!res.ok) throw new Error(res.status);
+    const data = await res.json();
+    for (const day of data.days || []) state.school[day.date] = day;
+    renderPlan();
+  } catch (err) {
+    schoolLoaded.delete(key);            // försök igen nästa gång veckan visas
+    console.warn("Skolmat kunde inte hämtas", err);
+  }
+}
+
 function renderPlan(){
   const today = new Date(); today.setHours(0,0,0,0);
   let html = "";
@@ -360,6 +395,7 @@ function renderPlan(){
            <div class="sub">${r ? `${e.portions || r.portions} portioner · <button class="ghost" data-view="${r.id}" data-p="${e.portions || r.portions}">Visa recept</button>` : (e.portions ? `${e.portions} portioner` : "")}</div>`
         : `<div class="empty">Inget planerat</div>`}</div>
       <button class="ghost" data-day="${i}">${title ? ic("pencil","ic sm") + "Ändra" : ic("plus","ic sm") + "Lägg till"}</button>
+      ${schoolChip(d)}
     </div>`;
   });
   $("#tab-plan").innerHTML = html;
@@ -578,6 +614,7 @@ function loadWeek(){
   const id = weekId(state.monday);
   unsubWeek = store.onWeek(id, w => { state.week = { days: w.days || {}, extras: w.extras || [] }; render(); }) || (() => {});
   render();
+  loadSchool(state.monday);
 }
 function saveWeek(w){ state.week = w; render(); store.saveWeek(weekId(state.monday), w); }
 $("#prevW").onclick = () => { state.monday.setDate(state.monday.getDate()-7); loadWeek(); };
