@@ -61,7 +61,21 @@
   textarea{min-height:120px;resize:vertical}
   label{display:block;font-size:13px;font-weight:500;color:var(--muted);margin:12px 0 5px}
   dialog{border:none;border-radius:22px;padding:0;width:min(560px,calc(100% - 24px));background:var(--card);color:var(--ink);box-shadow:0 20px 60px rgba(40,50,45,.18)}
-  dialog::backdrop{background:rgba(40,50,45,.25);backdrop-filter:blur(2px)}
+  dialog::backdrop{background:rgba(40,50,45,.3)}
+  dialog{max-height:calc(100dvh - 24px);overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+  html,body{touch-action:manipulation}
+  /* Receptvyn: helskärm med egen scroll */
+  #viewDlg{width:100%;max-width:640px;height:100dvh;max-height:100dvh;margin:0 auto;border-radius:0;overflow:hidden;box-shadow:none}
+  #viewDlg[open]{display:flex;flex-direction:column}
+  #viewBody{padding:0;display:flex;flex-direction:column;height:100%;min-height:0}
+  .vhead{display:flex;align-items:center;gap:8px;padding:calc(10px + env(safe-area-inset-top)) 12px 10px;border-bottom:1px solid var(--line);background:var(--card);flex:none}
+  .vtitle{flex:1;font-weight:600;font-size:15px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .iconbtn{width:40px;height:40px;padding:0;border:none;background:var(--accent-soft);color:var(--accent-ink);border-radius:12px;flex:none}
+  .iconbtn .ic{width:20px;height:20px}
+  .vscroll{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding:16px 20px calc(28px + env(safe-area-inset-bottom))}
+  .vscroll .hero{margin:0 0 12px;max-height:240px}
+  .vscroll h2{font-size:22px;margin:0 0 6px;letter-spacing:-.01em}
+  @media (min-width:700px){ #viewDlg{height:calc(100dvh - 48px);max-height:calc(100dvh - 48px);border-radius:22px;margin:auto} }
   .dlg{padding:20px}
   .dlg h2{margin:0 0 6px;font-size:19px;font-weight:700;letter-spacing:-.01em}
   .actions{display:flex;gap:8px;justify-content:flex-end;margin-top:18px;flex-wrap:wrap}
@@ -496,40 +510,65 @@ function openView(id, portions){
   let ck = loadChecks(id);
   // Gamla avbockningar (äldre än 12 timmar) nollställs automatiskt
   if (ck.t && Date.now() - ck.t > 12*3600*1000) ck = { i: [], s: [] };
-  const draw = () => {
-    const f = p / r.portions;
-    const doneS = steps.filter((_, n) => ck.s.includes(n)).length;
-    const nextS = steps.findIndex((_, n) => !ck.s.includes(n));
-    const any = ck.i.length || ck.s.length;
-    $("#viewBody").innerHTML = `<h2>${esc(r.name)}</h2>
-      ${r.image ? `<img class="hero" src="${esc(r.image)}" alt="" onerror="this.remove()">` : ""}
+  const amt = (i, f) => `${i.amount != null ? fmtNum(i.amount*f) : ""} ${esc(i.unit)}`;
+
+  // Ritas EN gång – sedan uppdateras bara det som ändras
+  $("#viewBody").innerHTML = `
+    <div class="vhead"><button class="iconbtn" id="closeView" aria-label="Stäng">${ic("chevL")}</button>
+      <span class="vtitle">${esc(r.name)}</span>
+      <button class="iconbtn" id="editRec" aria-label="Redigera">${ic("pencil")}</button></div>
+    <div class="vscroll">
+      ${r.image ? `<img class="hero" src="${esc(r.image)}" alt="" decoding="async" onerror="this.remove()">` : ""}
+      <h2>${esc(r.name)}</h2>
       ${r.estimated ? `<div class="note">Videon visade inte exakta mängder, så receptet är uppskattat. Justera gärna.</div>` : ""}
-      <div class="row" style="margin:8px 0;justify-content:space-between"><span class="pill"><button data-pp="-1">−</button>${p} portioner<button data-pp="1">+</button></span>
-        ${any ? `<button class="ghost" data-reset="1">${ic("x","ic sm")}Nollställ</button>` : ""}</div>
-      <h3>Ingredienser <span class="count">${ck.i.length}/${r.ingredients.length}</span></h3>
-      <ul class="checks">${r.ingredients.map((i, n) => `<li class="${ck.i.includes(n) ? "done" : ""}" data-ci="${n}">
-        <span class="box">${ic("check","ic sm")}</span><span class="txt">${esc(i.name)}</span>
-        <span class="amt">${i.amount != null ? fmtNum(i.amount*f) : ""} ${esc(i.unit)}</span></li>`).join("")}</ul>
-      ${steps.length ? `<h3>Gör så här <span class="count">${doneS}/${steps.length}</span></h3>
-      <ol class="steps2">${steps.map((s, n) => `<li class="${ck.s.includes(n) ? "done" : ""}${n === nextS ? " next" : ""}" data-cs="${n}">
-        <span class="num">${ck.s.includes(n) ? ic("check","ic sm") : n + 1}</span><span class="txt">${esc(s)}</span></li>`).join("")}</ol>
-      ${steps.length && doneS === steps.length ? `<div class="note withic" style="justify-content:center">${ic("check")}Klart! Smaklig måltid</div>` : ""}` : ""}
+      <div class="row" style="margin:8px 0;justify-content:space-between"><span class="pill"><button data-pp="-1">−</button><span id="vPort"></span><button data-pp="1">+</button></span>
+        <button class="ghost" data-reset="1" id="vReset">${ic("x","ic sm")}Nollställ</button></div>
+      <h3>Ingredienser <span class="count" id="vCi"></span></h3>
+      <ul class="checks">${r.ingredients.map((i, n) => `<li data-ci="${n}">
+        <span class="box">${ic("check","ic sm")}</span><span class="txt">${esc(i.name)}</span><span class="amt"></span></li>`).join("")}</ul>
+      ${steps.length ? `<h3>Gör så här <span class="count" id="vCs"></span></h3>
+      <ol class="steps2">${steps.map((s, n) => `<li data-cs="${n}"><span class="num"></span><span class="txt">${esc(s)}</span></li>`).join("")}</ol>
+      <div class="note withic" id="vDone" style="justify-content:center">${ic("check")}Klart! Smaklig måltid</div>` : ""}
       ${(r.source || r.link) ? `<p><a href="${esc(r.source || r.link)}" target="_blank" rel="noopener">Öppna originalet${r.source ? " på " + sourceLabel(r.source) : ""} ${ic("external","ic sm")}</a></p>` : ""}
-      <div class="actions"><button id="editRec">Redigera</button><button class="primary" id="closeView">Stäng</button></div>`;
+    </div>`;
+  const body = $("#viewBody");
+  const ingLis = [...body.querySelectorAll("[data-ci]")], stepLis = [...body.querySelectorAll("[data-cs]")];
+
+  const updAmounts = () => {
+    const f = p / r.portions;
+    $("#vPort").textContent = `${p} portioner`;
+    ingLis.forEach((li, n) => { li.querySelector(".amt").innerHTML = amt(r.ingredients[n], f); });
   };
-  draw();
+  const updChecks = () => {
+    ingLis.forEach((li, n) => li.classList.toggle("done", ck.i.includes(n)));
+    const nextS = steps.findIndex((_, n) => !ck.s.includes(n));
+    stepLis.forEach((li, n) => {
+      const done = ck.s.includes(n);
+      li.classList.toggle("done", done); li.classList.toggle("next", n === nextS);
+      li.querySelector(".num").innerHTML = done ? ic("check","ic sm") : String(n + 1);
+    });
+    $("#vCi").textContent = `${ck.i.length}/${r.ingredients.length}`;
+    if (steps.length){
+      $("#vCs").textContent = `${ck.s.length}/${steps.length}`;
+      $("#vDone").style.display = ck.s.length === steps.length ? "flex" : "none";
+    }
+    $("#vReset").style.visibility = (ck.i.length || ck.s.length) ? "visible" : "hidden";
+  };
+  updAmounts(); updChecks();
+
   const toggle = (arr, n) => { const k = arr.indexOf(n); k >= 0 ? arr.splice(k, 1) : arr.push(n); };
-  $("#viewBody").onclick = e => {
+  body.onclick = e => {
     const t = e.target.closest("[data-pp],[data-ci],[data-cs],[data-reset],#closeView,#editRec");
     if (!t) return;
-    if (t.dataset.pp){ p = Math.max(1, p + Number(t.dataset.pp)); draw(); return; }
-    if (t.dataset.ci !== undefined){ toggle(ck.i, Number(t.dataset.ci)); saveChecks(id, ck); draw(); return; }
-    if (t.dataset.cs !== undefined){ toggle(ck.s, Number(t.dataset.cs)); saveChecks(id, ck); draw(); return; }
-    if (t.dataset.reset){ ck = { i: [], s: [] }; saveChecks(id, ck); draw(); return; }
+    if (t.dataset.pp){ p = Math.max(1, p + Number(t.dataset.pp)); updAmounts(); return; }
+    if (t.dataset.ci !== undefined){ toggle(ck.i, Number(t.dataset.ci)); saveChecks(id, ck); updChecks(); return; }
+    if (t.dataset.cs !== undefined){ toggle(ck.s, Number(t.dataset.cs)); saveChecks(id, ck); updChecks(); return; }
+    if (t.dataset.reset){ ck = { i: [], s: [] }; saveChecks(id, ck); updChecks(); return; }
     if (t.id === "closeView") $("#viewDlg").close();
     if (t.id === "editRec"){ $("#viewDlg").close(); openRecipe(id); }
   };
   $("#viewDlg").showModal();
+  body.querySelector(".vscroll").scrollTop = 0;
   keepAwake(true);
 }
 
